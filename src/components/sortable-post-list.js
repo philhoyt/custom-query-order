@@ -6,6 +6,10 @@ import { __ } from '@wordpress/i18n';
 
 /**
  * Sortable post list component using HTML5 drag and drop.
+ *
+ * @param {Object} props - Component props.
+ * @param {Array}  props.posts - Array of post objects to display.
+ * @param {Function} props.onOrderChange - Callback function called when order changes.
  */
 export default function SortablePostList( { posts, onOrderChange } ) {
 	const [ draggedIndex, setDraggedIndex ] = useState( null );

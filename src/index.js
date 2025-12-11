@@ -7,7 +7,7 @@ import { createHigherOrderComponent } from '@wordpress/compose';
 import { InspectorControls } from '@wordpress/block-editor';
 import { PanelBody, Button } from '@wordpress/components';
 import { useState } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -154,9 +154,10 @@ const withCustomOrderControl = createHigherOrderComponent( ( BlockEdit ) => {
 										color: '#666',
 									} }
 								>
-									{ __(
-										`${ attributes.customOrder.length } posts in custom order`,
-										'custom-query-order'
+									{ sprintf(
+										/* translators: %d: number of posts */
+										__( '%d posts in custom order', 'custom-query-order' ),
+										attributes.customOrder.length
 									) }
 								</p>
 							) }

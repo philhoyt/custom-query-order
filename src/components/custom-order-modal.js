@@ -5,8 +5,6 @@ import { useState, useEffect } from '@wordpress/element';
 import { Modal, Button, Spinner } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import apiFetch from '@wordpress/api-fetch';
-import { useSelect } from '@wordpress/data';
-import { store as blockEditorStore } from '@wordpress/block-editor';
 
 /**
  * Internal dependencies
@@ -23,14 +21,6 @@ export default function CustomOrderModal( {
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ isSaving, setIsSaving ] = useState( false );
 	const [ orderedPostIds, setOrderedPostIds ] = useState( [] );
-
-	// Get the inner blocks to determine the query parameters.
-	const innerBlocks = useSelect(
-		( select ) => {
-			return select( blockEditorStore ).getBlocks( clientId );
-		},
-		[ clientId ]
-	);
 
 	useEffect( () => {
 		// Fetch posts based on the query parameters.
@@ -117,6 +107,7 @@ export default function CustomOrderModal( {
 			} catch ( error ) {
 				// Log error in development mode.
 				if ( process.env.NODE_ENV === 'development' ) {
+					// eslint-disable-next-line no-console
 					console.error(
 						'[CUSTOM_QUERY_ORDER] Error fetching posts:',
 						error
@@ -203,24 +194,26 @@ export default function CustomOrderModal( {
 					</div>
 				) }
 				<div className="custom-query-order-modal__content">
-					{ isLoading ? (
+					{ isLoading && (
 						<div style={ { textAlign: 'center', padding: '40px' } }>
 							<Spinner />
 							<p>
 								{ __(
-									'Loading posts...',
+									'Loading posts…',
 									'custom-query-order'
 								) }
 							</p>
 						</div>
-					) : posts.length === 0 ? (
+					) }
+					{ ! isLoading && posts.length === 0 && (
 						<p>
 							{ __(
 								'No posts found to sort.',
 								'custom-query-order'
 							) }
 						</p>
-					) : (
+					) }
+					{ ! isLoading && posts.length > 0 && (
 						<SortablePostList
 							posts={ posts }
 							onOrderChange={ handleOrderChange }
