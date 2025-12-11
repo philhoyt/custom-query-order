@@ -268,12 +268,12 @@ function custom_query_order_modify_query( $query_args, $block ) {
 	$query_args['_original_posts_per_page'] = $original_posts_per_page;
 	$query_args['_original_offset'] = $query_args['offset'] ?? 0;
 
-	// When custom order is set, we need to fetch ALL posts that match the query
-	// (or at least all posts in the custom order) so we can reorder them properly.
+	// When custom order is set, we need to fetch enough posts to cover:
+	// 1. All posts in the custom order array
+	// 2. The original pagination requirements (posts_per_page + offset)
 	// We'll apply pagination after reordering in posts_results.
-	// Fetch enough posts to cover all posts in the custom order plus a buffer.
 	$max_posts_needed = max( count( $custom_order ), $original_posts_per_page + ( $query_args['offset'] ?? 0 ) );
-	$query_args['posts_per_page'] = max( $max_posts_needed, 100 ); // Fetch at least 100 posts or enough to cover custom order.
+	$query_args['posts_per_page'] = $max_posts_needed; // Fetch exactly what we need.
 	unset( $query_args['offset'] ); // Remove offset, we'll handle it after reordering.
 
 	// Set orderby to 'none' to prevent default ordering from interfering.
