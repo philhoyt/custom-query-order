@@ -109,18 +109,19 @@ class Custom_Query_Order_Cache {
 			'customOrder' => $custom_order,
 			'timestamp'   => time(),
 		);
+		
+		// Cleanup only when adding to cache and cache is getting large.
+		// This avoids running cleanup on every render_block call.
+		if ( count( self::$cache ) > 50 ) {
+			self::cleanup();
+		}
 	}
 
 	/**
 	 * Clean up expired cache entries.
-	 * Only runs cleanup if cache size exceeds threshold to avoid performance issues.
+	 * Only called when cache size exceeds threshold to avoid performance issues.
 	 */
-	public static function cleanup() {
-		// Only cleanup if cache is getting large (performance optimization).
-		if ( count( self::$cache ) < 50 ) {
-			return;
-		}
-
+	private static function cleanup() {
 		$current_time = time();
 		foreach ( self::$cache as $key => $cache_entry ) {
 			if ( isset( $cache_entry['timestamp'] ) && ( $current_time - $cache_entry['timestamp'] ) > self::CACHE_TTL ) {
@@ -163,9 +164,6 @@ function custom_query_order_render_block( $block_content, $block ) {
 	if ( 'core/query' !== ( $block['blockName'] ?? '' ) ) {
 		return $block_content;
 	}
-
-	// Clean up expired cache entries (only if cache is large).
-	Custom_Query_Order_Cache::cleanup();
 
 	// Check if this block has customOrder attribute.
 	$custom_order = $block['attrs']['customOrder'] ?? null;
