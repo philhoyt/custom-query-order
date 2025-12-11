@@ -13,7 +13,12 @@ import { store as blockEditorStore } from '@wordpress/block-editor';
  */
 import SortablePostList from './sortable-post-list';
 
-export default function CustomOrderModal( { clientId, attributes, setAttributes, onClose } ) {
+export default function CustomOrderModal( {
+	clientId,
+	attributes,
+	setAttributes,
+	onClose,
+} ) {
 	const [ posts, setPosts ] = useState( [] );
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ isSaving, setIsSaving ] = useState( false );
@@ -35,34 +40,34 @@ export default function CustomOrderModal( { clientId, attributes, setAttributes,
 				// Get query parameters from the Query Loop block.
 				const query = attributes.query || {};
 				const postType = query.postType || 'post';
-				
+
 				// Build REST API path based on post type.
 				const restBase = postType === 'post' ? 'posts' : postType;
 				let apiPath = `/wp/v2/${ restBase }?per_page=100&status=publish`;
 
 				// Add query parameters.
 				const params = new URLSearchParams();
-				
+
 				if ( query.categories && query.categories.length > 0 ) {
 					params.append( 'categories', query.categories.join( ',' ) );
 				}
-				
+
 				if ( query.tags && query.tags.length > 0 ) {
 					params.append( 'tags', query.tags.join( ',' ) );
 				}
-				
+
 				if ( query.author ) {
 					params.append( 'author', query.author );
 				}
-				
+
 				if ( query.search ) {
 					params.append( 'search', query.search );
 				}
-				
+
 				if ( query.exclude && query.exclude.length > 0 ) {
 					params.append( 'exclude', query.exclude.join( ',' ) );
 				}
-				
+
 				if ( query.include && query.include.length > 0 ) {
 					params.append( 'include', query.include.join( ',' ) );
 				}
@@ -82,7 +87,9 @@ export default function CustomOrderModal( { clientId, attributes, setAttributes,
 				if ( savedOrder.length > 0 ) {
 					const orderedPosts = [];
 					const unorderedPosts = [];
-					const fetchedPostsMap = new Map( fetchedPosts.map( ( post ) => [ post.id, post ] ) );
+					const fetchedPostsMap = new Map(
+						fetchedPosts.map( ( post ) => [ post.id, post ] )
+					);
 
 					// First, add posts in the saved order.
 					savedOrder.forEach( ( id ) => {
@@ -103,12 +110,17 @@ export default function CustomOrderModal( { clientId, attributes, setAttributes,
 					setOrderedPostIds( sortedPosts.map( ( post ) => post.id ) );
 				} else {
 					setPosts( fetchedPosts );
-					setOrderedPostIds( fetchedPosts.map( ( post ) => post.id ) );
+					setOrderedPostIds(
+						fetchedPosts.map( ( post ) => post.id )
+					);
 				}
 			} catch ( error ) {
 				// Log error in development mode.
 				if ( process.env.NODE_ENV === 'development' ) {
-					console.error( '[CUSTOM_QUERY_ORDER] Error fetching posts:', error );
+					console.error(
+						'[CUSTOM_QUERY_ORDER] Error fetching posts:',
+						error
+					);
 				}
 				// Set empty state on error.
 				setPosts( [] );
@@ -128,15 +140,17 @@ export default function CustomOrderModal( { clientId, attributes, setAttributes,
 		}
 
 		setIsSaving( true );
-		
+
 		// Ensure we have a valid array of numbers.
-		const validOrder = orderedPostIds.filter( ( id ) => Number.isInteger( id ) && id > 0 );
-		
+		const validOrder = orderedPostIds.filter(
+			( id ) => Number.isInteger( id ) && id > 0
+		);
+
 		// Use setAttributes with just the customOrder to merge properly.
 		setAttributes( {
 			customOrder: validOrder,
 		} );
-		
+
 		// Wait a bit to ensure the save completes.
 		setTimeout( () => {
 			setIsSaving( false );
@@ -146,13 +160,15 @@ export default function CustomOrderModal( { clientId, attributes, setAttributes,
 
 	const handleOrderChange = ( newOrder ) => {
 		setOrderedPostIds( newOrder );
-		
+
 		// Update the posts array to match the new order.
-		const orderedPostsMap = new Map( posts.map( ( post ) => [ post.id, post ] ) );
+		const orderedPostsMap = new Map(
+			posts.map( ( post ) => [ post.id, post ] )
+		);
 		const reorderedPosts = newOrder
 			.map( ( id ) => orderedPostsMap.get( id ) )
 			.filter( ( post ) => post !== undefined );
-		
+
 		setPosts( reorderedPosts );
 	};
 
@@ -190,10 +206,20 @@ export default function CustomOrderModal( { clientId, attributes, setAttributes,
 					{ isLoading ? (
 						<div style={ { textAlign: 'center', padding: '40px' } }>
 							<Spinner />
-							<p>{ __( 'Loading posts...', 'custom-query-order' ) }</p>
+							<p>
+								{ __(
+									'Loading posts...',
+									'custom-query-order'
+								) }
+							</p>
 						</div>
 					) : posts.length === 0 ? (
-						<p>{ __( 'No posts found to sort.', 'custom-query-order' ) }</p>
+						<p>
+							{ __(
+								'No posts found to sort.',
+								'custom-query-order'
+							) }
+						</p>
 					) : (
 						<SortablePostList
 							posts={ posts }
@@ -205,4 +231,3 @@ export default function CustomOrderModal( { clientId, attributes, setAttributes,
 		</Modal>
 	);
 }
-

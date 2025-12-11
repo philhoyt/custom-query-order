@@ -33,14 +33,19 @@ export default function SortablePostList( { posts, onOrderChange } ) {
 			clearInterval( scrollIntervalRef.current );
 		}
 
-		const scrollContainer = scrollContainerRef.current?.closest( '.custom-query-order-modal__content' );
+		const scrollContainer = scrollContainerRef.current?.closest(
+			'.custom-query-order-modal__content'
+		);
 		if ( ! scrollContainer ) {
 			return;
 		}
 
 		scrollIntervalRef.current = setInterval( () => {
 			if ( direction === 'up' ) {
-				scrollContainer.scrollTop = Math.max( 0, scrollContainer.scrollTop - speed );
+				scrollContainer.scrollTop = Math.max(
+					0,
+					scrollContainer.scrollTop - speed
+				);
 			} else {
 				scrollContainer.scrollTop = Math.min(
 					scrollContainer.scrollHeight - scrollContainer.clientHeight,
@@ -66,7 +71,9 @@ export default function SortablePostList( { posts, onOrderChange } ) {
 		setDraggedOverIndex( index );
 
 		// Auto-scroll when dragging near the edges of the scrollable container.
-		const scrollContainer = scrollContainerRef.current?.closest( '.custom-query-order-modal__content' );
+		const scrollContainer = scrollContainerRef.current?.closest(
+			'.custom-query-order-modal__content'
+		);
 		if ( scrollContainer ) {
 			const rect = scrollContainer.getBoundingClientRect();
 			const mouseY = e.clientY;
@@ -77,16 +84,29 @@ export default function SortablePostList( { posts, onOrderChange } ) {
 			// Calculate scroll speed based on proximity to edge (closer = faster)
 			let scrollSpeed = 10;
 			if ( distanceFromTop < scrollThreshold ) {
-				const proximity = Math.max( 0, scrollThreshold - distanceFromTop );
+				const proximity = Math.max(
+					0,
+					scrollThreshold - distanceFromTop
+				);
 				scrollSpeed = 5 + ( proximity / scrollThreshold ) * 15; // 5-20px per frame
 			} else if ( distanceFromBottom < scrollThreshold ) {
-				const proximity = Math.max( 0, scrollThreshold - distanceFromBottom );
+				const proximity = Math.max(
+					0,
+					scrollThreshold - distanceFromBottom
+				);
 				scrollSpeed = 5 + ( proximity / scrollThreshold ) * 15; // 5-20px per frame
 			}
 
-			if ( distanceFromTop < scrollThreshold && scrollContainer.scrollTop > 0 ) {
+			if (
+				distanceFromTop < scrollThreshold &&
+				scrollContainer.scrollTop > 0
+			) {
 				startAutoScroll( 'up', scrollSpeed );
-			} else if ( distanceFromBottom < scrollThreshold && scrollContainer.scrollTop < scrollContainer.scrollHeight - scrollContainer.clientHeight ) {
+			} else if (
+				distanceFromBottom < scrollThreshold &&
+				scrollContainer.scrollTop <
+					scrollContainer.scrollHeight - scrollContainer.clientHeight
+			) {
 				startAutoScroll( 'down', scrollSpeed );
 			} else {
 				stopAutoScroll();
@@ -115,13 +135,14 @@ export default function SortablePostList( { posts, onOrderChange } ) {
 		newPosts.splice( draggedIndex, 1 );
 
 		// Calculate the correct drop index (adjust if dragging down).
-		const adjustedDropIndex = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex;
+		const adjustedDropIndex =
+			draggedIndex < dropIndex ? dropIndex - 1 : dropIndex;
 
 		// Insert it at the new position.
 		newPosts.splice( adjustedDropIndex, 0, draggedPost );
 
 		const newOrder = newPosts.map( ( post ) => post.id );
-		
+
 		setLocalPosts( newPosts );
 		setDraggedIndex( null );
 		setDraggedOverIndex( null );
@@ -137,10 +158,14 @@ export default function SortablePostList( { posts, onOrderChange } ) {
 	};
 
 	return (
-		<div className="custom-query-order-sortable-list" ref={ scrollContainerRef }>
+		<div
+			className="custom-query-order-sortable-list"
+			ref={ scrollContainerRef }
+		>
 			{ localPosts.map( ( post, index ) => {
 				const isDragged = index === draggedIndex;
-				const isDraggedOver = index === draggedOverIndex && index !== draggedIndex;
+				const isDraggedOver =
+					index === draggedOverIndex && index !== draggedIndex;
 
 				return (
 					<div
@@ -166,16 +191,49 @@ export default function SortablePostList( { posts, onOrderChange } ) {
 								fill="none"
 								xmlns="http://www.w3.org/2000/svg"
 							>
-								<circle cx="7" cy="5" r="1.5" fill="currentColor" />
-								<circle cx="13" cy="5" r="1.5" fill="currentColor" />
-								<circle cx="7" cy="10" r="1.5" fill="currentColor" />
-								<circle cx="13" cy="10" r="1.5" fill="currentColor" />
-								<circle cx="7" cy="15" r="1.5" fill="currentColor" />
-								<circle cx="13" cy="15" r="1.5" fill="currentColor" />
+								<circle
+									cx="7"
+									cy="5"
+									r="1.5"
+									fill="currentColor"
+								/>
+								<circle
+									cx="13"
+									cy="5"
+									r="1.5"
+									fill="currentColor"
+								/>
+								<circle
+									cx="7"
+									cy="10"
+									r="1.5"
+									fill="currentColor"
+								/>
+								<circle
+									cx="13"
+									cy="10"
+									r="1.5"
+									fill="currentColor"
+								/>
+								<circle
+									cx="7"
+									cy="15"
+									r="1.5"
+									fill="currentColor"
+								/>
+								<circle
+									cx="13"
+									cy="15"
+									r="1.5"
+									fill="currentColor"
+								/>
 							</svg>
 						</div>
 						<div className="custom-query-order-sortable-item__content">
-							<strong>{ post.title?.rendered || __( '(No title)', 'custom-query-order' ) }</strong>
+							<strong>
+								{ post.title?.rendered ||
+									__( '(No title)', 'custom-query-order' ) }
+							</strong>
 						</div>
 						<div className="custom-query-order-sortable-item__position">
 							{ index + 1 }
@@ -186,4 +244,3 @@ export default function SortablePostList( { posts, onOrderChange } ) {
 		</div>
 	);
 }
-

@@ -23,7 +23,10 @@ try {
 	registerBlockVariation( 'core/query', {
 		name: 'custom-query-order',
 		title: __( 'Query Loop (Custom Order)', 'custom-query-order' ),
-		description: __( 'Query Loop block with custom drag-and-drop sorting.', 'custom-query-order' ),
+		description: __(
+			'Query Loop block with custom drag-and-drop sorting.',
+			'custom-query-order'
+		),
 		attributes: {
 			namespace: 'custom-query-order',
 			customOrder: {
@@ -33,7 +36,9 @@ try {
 		},
 		isActive: ( blockAttributes, variationAttributes ) => {
 			// Only return true if namespace is explicitly set to our namespace
-			return blockAttributes?.namespace === variationAttributes?.namespace;
+			return (
+				blockAttributes?.namespace === variationAttributes?.namespace
+			);
 		},
 	} );
 } catch ( error ) {
@@ -49,10 +54,14 @@ addFilter(
 	'blocks.registerBlockType',
 	'custom-query-order/add-attributes',
 	( settings, name ) => {
-		if ( name === 'core/query' && settings && typeof settings === 'object' ) {
+		if (
+			name === 'core/query' &&
+			settings &&
+			typeof settings === 'object'
+		) {
 			// Create a new settings object to avoid mutating the original
 			const newSettings = { ...settings };
-			
+
 			// Safely merge attributes without overwriting existing ones
 			if ( ! newSettings.attributes ) {
 				newSettings.attributes = {};
@@ -60,7 +69,7 @@ addFilter(
 				// Create a new attributes object to avoid mutation
 				newSettings.attributes = { ...newSettings.attributes };
 			}
-			
+
 			// Only add our attributes if they don't already exist
 			if ( ! newSettings.attributes.namespace ) {
 				newSettings.attributes.namespace = {
@@ -74,7 +83,7 @@ addFilter(
 					default: [],
 				};
 			}
-			
+
 			return newSettings;
 		}
 		return settings;
@@ -91,7 +100,10 @@ const withCustomOrderControl = createHigherOrderComponent( ( BlockEdit ) => {
 		const [ isModalOpen, setIsModalOpen ] = useState( false );
 
 		// Only show for Query Loop blocks with our namespace.
-		if ( props.name !== 'core/query' || attributes.namespace !== 'custom-query-order' ) {
+		if (
+			props.name !== 'core/query' ||
+			attributes.namespace !== 'custom-query-order'
+		) {
 			return <BlockEdit { ...props } />;
 		}
 
@@ -111,7 +123,14 @@ const withCustomOrderControl = createHigherOrderComponent( ( BlockEdit ) => {
 								'custom-query-order'
 							) }
 						</p>
-						<p style={ { fontSize: '12px', color: '#666', fontStyle: 'italic', marginTop: '8px' } }>
+						<p
+							style={ {
+								fontSize: '12px',
+								color: '#666',
+								fontStyle: 'italic',
+								marginTop: '8px',
+							} }
+						>
 							{ __(
 								'Note: The editor preview may not reflect the custom order. The order will be correct on the frontend.',
 								'custom-query-order'
@@ -126,14 +145,21 @@ const withCustomOrderControl = createHigherOrderComponent( ( BlockEdit ) => {
 						>
 							{ __( 'Manage Post Order', 'custom-query-order' ) }
 						</Button>
-						{ attributes.customOrder && attributes.customOrder.length > 0 && (
-							<p style={ { marginTop: '10px', fontSize: '12px', color: '#666' } }>
-								{ __(
-									`${ attributes.customOrder.length } posts in custom order`,
-									'custom-query-order'
-								) }
-							</p>
-						) }
+						{ attributes.customOrder &&
+							attributes.customOrder.length > 0 && (
+								<p
+									style={ {
+										marginTop: '10px',
+										fontSize: '12px',
+										color: '#666',
+									} }
+								>
+									{ __(
+										`${ attributes.customOrder.length } posts in custom order`,
+										'custom-query-order'
+									) }
+								</p>
+							) }
 					</PanelBody>
 				</InspectorControls>
 				{ isModalOpen && (
@@ -158,4 +184,3 @@ addFilter(
 	'custom-query-order/add-control',
 	withCustomOrderControl
 );
-
