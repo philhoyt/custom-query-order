@@ -56,12 +56,99 @@ function custom_query_order_enqueue_block_editor_assets() {
 add_action( 'enqueue_block_editor_assets', 'custom_query_order_enqueue_block_editor_assets' );
 
 /**
- * Storage for Query Loop block attributes, keyed by block ID.
+ * Cache handler for Query Loop block attributes.
  * Used to pass attributes from render_block to query_loop_block_query_vars.
- *
- * @var array
  */
-$custom_query_order_block_cache = array();
+class Custom_Query_Order_Cache {
+	/**
+	 * Cache storage, keyed by block ID.
+	 *
+	 * @var array
+	 */
+	private static $cache = array();
+
+	/**
+	 * Cache TTL in seconds (5 minutes).
+	 *
+	 * @var int
+	 */
+	private const CACHE_TTL = 300;
+
+	/**
+	 * Get cached custom order for a query ID.
+	 *
+	 * @param string $query_id The query ID.
+	 * @return array|null The custom order array or null if not found/expired.
+	 */
+	public static function get( $query_id ) {
+		if ( ! isset( self::$cache[ $query_id ] ) ) {
+			return null;
+		}
+
+		$cache_entry = self::$cache[ $query_id ];
+		$current_time = time();
+
+		// Check if cache is still valid.
+		if ( isset( $cache_entry['timestamp'] ) && ( $current_time - $cache_entry['timestamp'] ) < self::CACHE_TTL ) {
+			return $cache_entry['customOrder'] ?? null;
+		}
+
+		// Cache expired, remove it.
+		unset( self::$cache[ $query_id ] );
+		return null;
+	}
+
+	/**
+	 * Set cached custom order for a query ID.
+	 *
+	 * @param string $query_id    The query ID.
+	 * @param array  $custom_order The custom order array.
+	 */
+	public static function set( $query_id, $custom_order ) {
+		self::$cache[ $query_id ] = array(
+			'customOrder' => $custom_order,
+			'timestamp'   => time(),
+		);
+	}
+
+	/**
+	 * Clean up expired cache entries.
+	 * Only runs cleanup if cache size exceeds threshold to avoid performance issues.
+	 */
+	public static function cleanup() {
+		// Only cleanup if cache is getting large (performance optimization).
+		if ( count( self::$cache ) < 50 ) {
+			return;
+		}
+
+		$current_time = time();
+		foreach ( self::$cache as $key => $cache_entry ) {
+			if ( isset( $cache_entry['timestamp'] ) && ( $current_time - $cache_entry['timestamp'] ) > self::CACHE_TTL ) {
+				unset( self::$cache[ $key ] );
+			}
+		}
+	}
+
+	/**
+	 * Get the most recent cache entry (fallback method).
+	 *
+	 * @return array|null The most recent custom order or null.
+	 */
+	public static function get_most_recent() {
+		if ( empty( self::$cache ) ) {
+			return null;
+		}
+
+		$most_recent = end( self::$cache );
+		$current_time = time();
+
+		if ( isset( $most_recent['timestamp'] ) && ( $current_time - $most_recent['timestamp'] ) < self::CACHE_TTL ) {
+			return $most_recent['customOrder'] ?? null;
+		}
+
+		return null;
+	}
+}
 
 /**
  * Capture Query Loop block attributes when the block is rendered.
@@ -72,20 +159,13 @@ $custom_query_order_block_cache = array();
  * @return string Unmodified block content.
  */
 function custom_query_order_render_block( $block_content, $block ) {
-	global $custom_query_order_block_cache;
-	
 	// Only process Query Loop blocks.
 	if ( 'core/query' !== ( $block['blockName'] ?? '' ) ) {
 		return $block_content;
 	}
 
-	// Clean up old cache entries (older than 5 minutes).
-	$current_time = time();
-	foreach ( $custom_query_order_block_cache as $key => $cache_entry ) {
-		if ( isset( $cache_entry['timestamp'] ) && ( $current_time - $cache_entry['timestamp'] ) > 300 ) {
-			unset( $custom_query_order_block_cache[ $key ] );
-		}
-	}
+	// Clean up expired cache entries (only if cache is large).
+	Custom_Query_Order_Cache::cleanup();
 
 	// Check if this block has customOrder attribute.
 	$custom_order = $block['attrs']['customOrder'] ?? null;
@@ -94,48 +174,13 @@ function custom_query_order_render_block( $block_content, $block ) {
 		// Get a unique identifier for this block.
 		$block_id = $block['attrs']['queryId'] ?? $block['attrs']['id'] ?? $block['attrs']['anchor'] ?? uniqid( 'query_', true );
 		
-		// Store the custom order with a timestamp for cleanup.
-		$custom_query_order_block_cache[ $block_id ] = array(
-			'customOrder' => $custom_order,
-			'timestamp'   => time(),
-		);
+		// Store the custom order in cache.
+		Custom_Query_Order_Cache::set( $block_id, $custom_order );
 	}
 
 	return $block_content;
 }
 add_filter( 'render_block', 'custom_query_order_render_block', 10, 2 );
-
-/**
- * Recursively search blocks for a Query Loop block with matching queryId.
- *
- * @param array $blocks Array of block arrays.
- * @param int   $query_id The queryId to search for.
- * @return array|null The customOrder array if found, null otherwise.
- */
-function custom_query_order_find_block_attributes( $blocks, $query_id ) {
-	foreach ( $blocks as $block ) {
-		// Check if this is a Query Loop block with matching queryId.
-		if ( 'core/query' === ( $block['blockName'] ?? '' ) ) {
-			$block_query_id = $block['attrs']['queryId'] ?? null;
-			if ( $block_query_id == $query_id ) {
-				$custom_order = $block['attrs']['customOrder'] ?? null;
-				if ( ! empty( $custom_order ) && is_array( $custom_order ) ) {
-					return $custom_order;
-				}
-			}
-		}
-		
-		// Recursively search inner blocks.
-		if ( ! empty( $block['innerBlocks'] ) ) {
-			$found = custom_query_order_find_block_attributes( $block['innerBlocks'], $query_id );
-			if ( $found ) {
-				return $found;
-			}
-		}
-	}
-	
-	return null;
-}
 
 /**
  * Modify the query to prepare for custom order.
@@ -146,105 +191,68 @@ function custom_query_order_find_block_attributes( $blocks, $query_id ) {
  * @return array Modified query arguments.
  */
 function custom_query_order_modify_query( $query_args, $block ) {
-	global $custom_query_order_block_cache;
-	
 	// Try to get the Query Loop block's attributes from context or cache.
 	// The block passed here is the inner block (post-template), so we need to get the parent's attributes.
 	$custom_order = null;
 	
-	// Method 1: Try to get from block context (if available).
-	if ( isset( $block->context['queryId'] ) ) {
-		$query_id = $block->context['queryId'];
-		if ( isset( $custom_query_order_block_cache[ $query_id ] ) ) {
-			$cache_entry = $custom_query_order_block_cache[ $query_id ];
-			// Check if cache is still valid (5 minutes).
-			if ( isset( $cache_entry['timestamp'] ) && ( time() - $cache_entry['timestamp'] ) < 300 ) {
-				$custom_order = $cache_entry['customOrder'] ?? null;
-			}
-		}
+	// Need queryId to proceed.
+	if ( ! isset( $block->context['queryId'] ) ) {
+		return $query_args;
 	}
 	
-	// Method 2: Try to get from block attributes (if the block itself has it - shouldn't happen but just in case).
-	if ( ! $custom_order && isset( $block->attributes['customOrder'] ) ) {
-		$custom_order = $block->attributes['customOrder'];
-	}
+	$query_id = $block->context['queryId'];
 	
-	// Method 3: Try to parse block attributes from post content (for REST API requests).
-	if ( ! $custom_order && isset( $block->context['queryId'] ) ) {
-		$query_id = $block->context['queryId'];
-		// Try to get the current post ID from various sources.
+	// Method 1: Try to get from cache (populated by render_block hook).
+	$custom_order = Custom_Query_Order_Cache::get( $query_id );
+	
+	// Method 2: If cache is empty, parse block attributes from post content (frontend only).
+	// This handles cases where query_loop_block_query_vars fires before render_block.
+	if ( ! $custom_order && ! defined( 'REST_REQUEST' ) ) {
+		// Try to get the current post ID from WordPress context (frontend only).
 		$post_id = get_the_ID();
 		if ( ! $post_id ) {
-			// Try to get from global post.
 			global $post;
 			$post_id = $post->ID ?? null;
 		}
-		if ( ! $post_id && isset( $_GET['post'] ) ) {
-			$post_id = intval( $_GET['post'] );
-		}
-		if ( ! $post_id && isset( $_POST['post_id'] ) ) {
-			$post_id = intval( $_POST['post_id'] );
-		}
 		
-		// For REST API requests, try to get post ID from the request context.
-		if ( ! $post_id && defined( 'REST_REQUEST' ) && REST_REQUEST ) {
-			// Try to get from REST API request.
-			global $wp_rest_server;
-			if ( $wp_rest_server ) {
-				$request = $wp_rest_server->get_request();
-				if ( $request ) {
-					// Check if this is a request for a specific post.
-					$route = $request->get_route();
-					// Routes like /wp/v2/posts/123 or /wp/v2/pages/123
-					if ( preg_match( '#/wp/v2/(?:posts|pages|wp_peeps_people)/(\d+)#', $route, $matches ) ) {
-						$post_id = intval( $matches[1] );
-					}
-					// Also check query parameters.
-					if ( ! $post_id ) {
-						$params = $request->get_query_params();
-						if ( isset( $params['post'] ) ) {
-							$post_id = intval( $params['post'] );
-						} elseif ( isset( $params['post_id'] ) ) {
-							$post_id = intval( $params['post_id'] );
-						} elseif ( isset( $params['context'] ) && $params['context'] === 'edit' ) {
-							// For editor preview, the post ID might be in the referer or headers.
-							$referer = $request->get_header( 'referer' );
-							if ( $referer && preg_match( '/post\.php\?post=(\d+)/', $referer, $matches ) ) {
-								$post_id = intval( $matches[1] );
+		if ( $post_id ) {
+			$post_content = get_post_field( 'post_content', $post_id );
+			if ( false !== $post_content && ! empty( $post_content ) ) {
+				$blocks = parse_blocks( $post_content );
+				if ( is_array( $blocks ) ) {
+					// Search for the Query Loop block with matching queryId.
+					foreach ( $blocks as $parsed_block ) {
+						if ( 'core/query' === ( $parsed_block['blockName'] ?? '' ) ) {
+							$block_query_id = $parsed_block['attrs']['queryId'] ?? null;
+							if ( $block_query_id === $query_id ) {
+								$found_order = $parsed_block['attrs']['customOrder'] ?? null;
+								if ( ! empty( $found_order ) && is_array( $found_order ) ) {
+									$custom_order = $found_order;
+									// Cache it for future use.
+									Custom_Query_Order_Cache::set( $query_id, $custom_order );
+									break;
+								}
+							}
+						}
+						// Recursively search inner blocks.
+						if ( ! empty( $parsed_block['innerBlocks'] ) ) {
+							foreach ( $parsed_block['innerBlocks'] as $inner_block ) {
+								if ( 'core/query' === ( $inner_block['blockName'] ?? '' ) ) {
+									$inner_query_id = $inner_block['attrs']['queryId'] ?? null;
+									if ( $inner_query_id === $query_id ) {
+										$found_order = $inner_block['attrs']['customOrder'] ?? null;
+										if ( ! empty( $found_order ) && is_array( $found_order ) ) {
+											$custom_order = $found_order;
+											Custom_Query_Order_Cache::set( $query_id, $custom_order );
+											break 2;
+										}
+									}
+								}
 							}
 						}
 					}
 				}
 			}
-		}
-		
-		// Also try to get from the block's attributes if it has a postId (unlikely but possible).
-		if ( ! $post_id && isset( $block->attributes['postId'] ) ) {
-			$post_id = intval( $block->attributes['postId'] );
-		}
-		
-		if ( $post_id ) {
-			$post_content = get_post_field( 'post_content', $post_id );
-			if ( $post_content ) {
-				$blocks = parse_blocks( $post_content );
-				$custom_order = custom_query_order_find_block_attributes( $blocks, $query_id );
-				if ( $custom_order ) {
-					// Cache it for future use.
-					$custom_query_order_block_cache[ $query_id ] = array(
-						'customOrder' => $custom_order,
-						'timestamp'   => time(),
-					);
-				}
-			}
-		}
-	}
-	
-	// Method 4: Try to find in cache by matching query parameters (fallback).
-	if ( ! $custom_order && ! empty( $custom_query_order_block_cache ) ) {
-		// Use the most recent cache entry as fallback.
-		$most_recent = end( $custom_query_order_block_cache );
-		if ( isset( $most_recent['timestamp'] ) && ( time() - $most_recent['timestamp'] ) < 300 ) {
-			$custom_order = $most_recent['customOrder'] ?? null;
 		}
 	}
 	

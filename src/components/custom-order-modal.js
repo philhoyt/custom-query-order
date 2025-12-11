@@ -106,7 +106,13 @@ export default function CustomOrderModal( { clientId, attributes, setAttributes,
 					setOrderedPostIds( fetchedPosts.map( ( post ) => post.id ) );
 				}
 			} catch ( error ) {
-				// Silently handle errors
+				// Log error in development mode.
+				if ( process.env.NODE_ENV === 'development' ) {
+					console.error( '[CUSTOM_QUERY_ORDER] Error fetching posts:', error );
+				}
+				// Set empty state on error.
+				setPosts( [] );
+				setOrderedPostIds( [] );
 			} finally {
 				setIsLoading( false );
 			}
